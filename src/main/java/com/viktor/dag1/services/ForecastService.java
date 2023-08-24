@@ -45,6 +45,12 @@ public class ForecastService{
         writeAllToFile(forecasts);
     }
 
+    public void deleted(Forecast forecast) throws IOException {
+        forecasts.remove(forecast);
+    }
+
+
+// file hantering
     private List<Forecast> readFromFile() throws IOException, IOException {
         if(!Files.exists(Path.of("predictions.json"))) return new ArrayList<Forecast>();
         ObjectMapper objectMapper = getObjectMapper();

@@ -115,7 +115,7 @@ public class Dag1Application implements CommandLineRunner {
 		boolean runUpdate = true;
 		int num = 1;
 
-		System.out.print("Select a row number to update:");
+		System.out.printf("Select a row number to update:%n");
 
 		for(var prediction : forecastService.getForecasts()){
 			System.out.printf("%d) Date:%d  Kl:%d  Temp:%fC   %n"
@@ -160,7 +160,7 @@ public class Dag1Application implements CommandLineRunner {
 
 		int num = 1;
 
-		System.out.print("Select what forecast to delete:");
+		System.out.print("Select what forecast to delete:%n");
 		for(var prediction : forecastService.getForecasts()){
 			System.out.printf("%d) Date:%d  Kl:%d  Temp:%fC   %n"
 					,num, prediction.getDate(),
@@ -171,19 +171,20 @@ public class Dag1Application implements CommandLineRunner {
 		}
 
 		int sel = scan.nextInt();
-		var getForecast = forecastService.getByIndex(sel -1);
+		var selectedForecast = forecastService.getByIndex(sel -1);
 
 			System.out.printf("Are you Sure you want to delete this forecast?%n 1: Yes%n 2: NO");
 		switch (scan.nextInt()) {
 			case 1 -> {
-				System.out.print("Forecast has been deleted");
-				forecastService.update(forecast);
+				System.out.printf("Forecast has been deleted%n");
+                forecastService.deleted(selectedForecast);
+				forecastService.update(selectedForecast);
 			}
 			case 2 -> {
-				System.out.println("Forecast was not deleted");
+				System.out.printf("Forecast was not deleted%n");
 			}
 			default -> {
-				System.out.println(" PRESS 1 for YES or 2 For NO");
+				System.out.println("Invalid choice. Please press 1 for YES or 2 For NO");
 			}
 		}
 
