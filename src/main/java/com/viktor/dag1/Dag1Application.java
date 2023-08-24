@@ -9,6 +9,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.Scanner;
 import java.util.UUID;
@@ -36,57 +37,60 @@ public class Dag1Application implements CommandLineRunner {
 		BlogPost blogPost = objectMapper.readValue(new URL("https://jsonplaceholder.typicode.com/posts/1"), BlogPost.class);
 		BlogPost []blogPost1 = objectMapper.readValue(new URL("https://jsonplaceholder.typicode.com/posts"), BlogPost[].class);
 
-		// JSON string
+
 		var forecast = new Forecast();
 		forecast.setId(UUID.randomUUID());
 		forecast.setDate(20230530);
 		forecast.setHour(12);
 		forecast.setTemperature(12);
 
-
+		// JSON string
 		String json = objectMapper.writeValueAsString(forecast);
 		System.out.println(json);
 
 		String json1 = objectMapper.writeValueAsString(blogPost);
 		Forecast forecast2 = objectMapper.readValue(json, Forecast.class);
 		System.out.println(json1);
-		
 
 
-		boolean run = true;
 
-		while(run == true){
+		boolean runMenu = true;
+
+		while(runMenu == true){
 			System.out.println("--- PRESS ---");
 			System.out.println("1. List all");
 			System.out.println("2. Create");
 			System.out.println("3. Update");
+			System.out.println("4. Delete");
 			System.out.println("9. Exit");
 
 			int sel = scan.nextInt();
 
-			switch (sel){
-				case 1: listPredictions();
-				break;
-
-				case 2: addPredictions();
-				break;
-
-				case 3: updatePrediction();
-				break;
-
-				case 9: run = false;
-				break;
-				default:
-					System.out.println("Press one of the instructed buttons!");
+			switch (sel) {
+				case 1 -> listPredictions();
+				case 2 -> addPredictions();
+				case 3 -> updatePrediction();
+				case 4 -> deletePrediction();
+				case 9 -> runMenu = false;
+				default -> System.out.println("Press one of the instructed buttons!");
 			}
 		}
 	}
 
-	private void addPredictions(){
-		/*TODO*/
-		// input på dag, hour, temp
-		// anropa servicen - save
-		 Forecast forecast = new Forecast();
+	private void  listPredictions(){
+		for (var prediction : forecastService.getForecasts()){
+			System.out.printf("ID: %s Date: %d Hour: %d Temp: %f %n",
+					prediction.getId(),
+					prediction.getDate(),
+					prediction.getHour(),
+					prediction.getTemperature()
+			);
+		}
+	}
+
+	private void addPredictions() throws IOException {
+
+		Forecast forecast = new Forecast();
 
 		System.out.println("---Set yyyyMMdd---");
 		int date = scan.nextInt();
@@ -104,23 +108,14 @@ public class Dag1Application implements CommandLineRunner {
 		forecast.setTemperature(temp);
 
 		forecastService.add(forecast);
-
-	}
-	private void  listPredictions(){
-		for (var prediction : forecastService.getForecasts()){
-			System.out.printf("ID: %s Date: %d Hour: %d Temp: %f %n",
-					prediction.getId(),
-					prediction.getDate(),
-					prediction.getHour(),
-					prediction.getTemperature()
-			);
-		}
 	}
 
-	private void updatePrediction() {
+	private void updatePrediction() throws IOException {
 
-		boolean run = true;
+		boolean runUpdate = true;
 		int num = 1;
+
+		System.out.print("Select a row number to update:");
 
 		for(var prediction : forecastService.getForecasts()){
 			System.out.printf("%d) Date:%d  Kl:%d  Temp:%fC   %n"
@@ -131,43 +126,68 @@ public class Dag1Application implements CommandLineRunner {
 			num++;
 		}
 
-		System.out.print("Select a row number to update:");
 		int sel = scan.nextInt();
 			var changeForecast = forecastService.getByIndex(sel -1);
 
-		while(run == true){
-			System.out.println("What do you want to update?" + " 1 = Date" + " 2 = Hour" + " 3 = Temperature" + " 9 = Exit to main menu");
-			switch (scan.nextInt()){
-				case 1 : {
+		while(runUpdate == true){
+			System.out.printf("What do you want to update?%n 1: Date%n 2: time of day%n 3: Temperature%n 9: Exit and save");
+			switch (scan.nextInt()) {
+				case 1 -> {
 					System.out.print("New Date:");
 					changeForecast.setDate(scan.nextInt());
-				}break;
-				case 2 : {
+				}
+				case 2 -> {
 					System.out.print("New time of day:");
 					changeForecast.setHour(scan.nextInt());
-				}break;
-				case 3 : {
+				}
+				case 3 -> {
 					System.out.print("New temperature:");
 					changeForecast.setTemperature(scan.nextFloat());
-					forecastService.update(forecast);
-				}break;
-				case 9 : {
-					run = false;
+
 				}
-				break;
-				default: {
+				case 9 -> {
+					forecastService.update(forecast);
+					runUpdate = false;
+				}
+				default -> {
 					System.out.println(" Select between 1-3 or 9");
 				}
 			}
 		}
 	}
 
-	private void deletePrediction(){
+	private void deletePrediction() throws IOException {
 
-		
+		int num = 1;
+
+		System.out.print("Select what forecast to delete:");
+		for(var prediction : forecastService.getForecasts()){
+			System.out.printf("%d) Date:%d  Kl:%d  Temp:%fC   %n"
+					,num, prediction.getDate(),
+					prediction.getHour(),
+					prediction.getTemperature()
+			);
+			num++;
+		}
+
+		int sel = scan.nextInt();
+		var getForecast = forecastService.getByIndex(sel -1);
+
+			System.out.printf("Are you Sure you want to delete this forecast?%n 1: Yes%n 2: NO");
+		switch (scan.nextInt()) {
+			case 1 -> {
+				System.out.print("Forecast has been deleted");
+				forecastService.update(forecast);
+			}
+			case 2 -> {
+				System.out.println("Forecast was not deleted");
+			}
+			default -> {
+				System.out.println(" PRESS 1 for YES or 2 For NO");
+			}
+		}
 
 	}
-
 }
 
 
