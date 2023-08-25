@@ -45,7 +45,7 @@ public class ForecastService{
         writeAllToFile(forecasts);
     }
 
-    public void deleted(Forecast forecast) throws IOException {
+    public void deleted(Forecast forecast){
         forecasts.remove(forecast);
     }
 

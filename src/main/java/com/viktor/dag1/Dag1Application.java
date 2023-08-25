@@ -32,6 +32,7 @@ public class Dag1Application implements CommandLineRunner {
 	@Override
 	public void run(String... args) throws Exception {
 
+		/*
 		var objectMapper = new ObjectMapper();
 
 		BlogPost blogPost = objectMapper.readValue(new URL("https://jsonplaceholder.typicode.com/posts/1"), BlogPost.class);
@@ -51,8 +52,11 @@ public class Dag1Application implements CommandLineRunner {
 		String json1 = objectMapper.writeValueAsString(blogPost);
 		Forecast forecast2 = objectMapper.readValue(json, Forecast.class);
 		System.out.println(json1);
+		*/
 
-
+        System.out.printf("%n***All current predictions***%n");
+        listPredictions();
+        System.out.printf("%n");
 
 		boolean runMenu = true;
 
@@ -113,20 +117,20 @@ public class Dag1Application implements CommandLineRunner {
 	private void updatePrediction() throws IOException {
 
 		boolean runUpdate = true;
-		int num = 1;
 
 		System.out.printf("Select a row number to update:%n");
 
-		for(var prediction : forecastService.getForecasts()){
-			System.out.printf("%d) Date:%d  Kl:%d  Temp:%fC   %n"
-					,num, prediction.getDate(),
-					prediction.getHour(),
-					prediction.getTemperature()
-			);
-			num++;
-		}
+		forIForecasts();
 
-		int sel = scan.nextInt();
+		int sel;
+		do {
+			sel = scan.nextInt();
+			if (sel > forecastService.getForecasts().size()){
+				System.out.printf("That prediction those not exist! Try a different number.%n");
+				forIForecasts();
+			}
+		}while (sel > forecastService.getForecasts().size());
+
 			var changeForecast = forecastService.getByIndex(sel -1);
 
 		while(runUpdate == true){
@@ -149,26 +153,14 @@ public class Dag1Application implements CommandLineRunner {
 					forecastService.update(forecast);
 					runUpdate = false;
 				}
-				default -> {
-					System.out.println(" Select between 1-3 or 9");
-				}
+				default -> System.out.println(" Select between 1-3 or 9");
 			}
 		}
 	}
 
 	private void deletePrediction() throws IOException {
 
-		int num = 1;
-
-		System.out.print("Select what forecast to delete:%n");
-		for(var prediction : forecastService.getForecasts()){
-			System.out.printf("%d) Date:%d  Kl:%d  Temp:%fC   %n"
-					,num, prediction.getDate(),
-					prediction.getHour(),
-					prediction.getTemperature()
-			);
-			num++;
-		}
+		forIForecasts();
 
 		int sel = scan.nextInt();
 		var selectedForecast = forecastService.getByIndex(sel -1);
@@ -188,6 +180,18 @@ public class Dag1Application implements CommandLineRunner {
 			}
 		}
 
+	}
+
+	private void forIForecasts(){
+		int num = 1;
+		for(var prediction : forecastService.getForecasts()){
+			System.out.printf("%d) Date:%d  Kl:%d  Temp:%fC   %n"
+					,num, prediction.getDate(),
+					prediction.getHour(),
+					prediction.getTemperature()
+			);
+			num++;
+		}
 	}
 }
 
