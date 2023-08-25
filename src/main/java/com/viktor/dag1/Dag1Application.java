@@ -1,8 +1,9 @@
 package com.viktor.dag1;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.viktor.dag1.models.BlogPost;
 import com.viktor.dag1.models.Forecast;
+import com.viktor.dag1.models.Predictions;
+import com.viktor.dag1.models.TimeSeries;
 import com.viktor.dag1.services.ForecastService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -23,6 +24,7 @@ public class Dag1Application implements CommandLineRunner {
 	@Autowired
 	private ForecastService forecastService;
 	private Forecast forecast;
+	private TimeSeries timeSeries;
 
 	public static void main(String[] args) {
 
@@ -32,27 +34,12 @@ public class Dag1Application implements CommandLineRunner {
 	@Override
 	public void run(String... args) throws Exception {
 
-		/*
 		var objectMapper = new ObjectMapper();
 
-		BlogPost blogPost = objectMapper.readValue(new URL("https://jsonplaceholder.typicode.com/posts/1"), BlogPost.class);
-		BlogPost []blogPost1 = objectMapper.readValue(new URL("https://jsonplaceholder.typicode.com/posts"), BlogPost[].class);
+		Predictions predictions = objectMapper.readValue(new URL("https://opendata-download-metfcst.smhi.se/api/category/pmp3g/version/2/geotype/point/lon/14.436469/lat/61.13366/data.json"), Predictions.class);
 
-
-		var forecast = new Forecast();
-		forecast.setId(UUID.randomUUID());
-		forecast.setDate(20230530);
-		forecast.setHour(12);
-		forecast.setTemperature(12);
-
-		// JSON string
-		String json = objectMapper.writeValueAsString(forecast);
-		System.out.println(json);
-
-		String json1 = objectMapper.writeValueAsString(blogPost);
-		Forecast forecast2 = objectMapper.readValue(json, Forecast.class);
-		System.out.println(json1);
-		*/
+		String smhiPrediction = objectMapper.writeValueAsString(predictions);
+		System.out.println(smhiPrediction);
 
         System.out.printf("%n***All current predictions***%n");
         listPredictions();

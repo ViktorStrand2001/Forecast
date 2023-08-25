@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.viktor.dag1.models.Forecast;
+import com.viktor.dag1.models.Predictions;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -49,6 +50,10 @@ public class ForecastService{
         forecasts.remove(forecast);
     }
 
+    public void showPrediction(){
+
+    }
+
 
 // file hantering
     private List<Forecast> readFromFile() throws IOException, IOException {
@@ -71,7 +76,6 @@ public class ForecastService{
         Files.writeString(Path.of("predictions.json"), stringWriter.toString());
 
     }
-
 
     private static ObjectMapper getObjectMapper() {
         ObjectMapper mapper = new ObjectMapper();
