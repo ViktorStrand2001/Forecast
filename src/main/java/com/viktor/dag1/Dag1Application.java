@@ -1,7 +1,9 @@
 package com.viktor.dag1;
 
+import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.viktor.dag1.models.Forecast;
+import com.viktor.dag1.models.Parameter;
 import com.viktor.dag1.models.Predictions;
 import com.viktor.dag1.models.TimeSeries;
 import com.viktor.dag1.services.ForecastService;
@@ -12,6 +14,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.List;
 import java.util.Scanner;
 import java.util.UUID;
 
@@ -34,17 +37,6 @@ public class Dag1Application implements CommandLineRunner {
 	@Override
 	public void run(String... args) throws Exception {
 
-		var objectMapper = new ObjectMapper();
-
-		Predictions predictions = objectMapper.readValue(new URL("https://opendata-download-metfcst.smhi.se/api/category/pmp3g/version/2/geotype/point/lon/14.436469/lat/61.13366/data.json"), Predictions.class);
-
-		String smhiPrediction = objectMapper.writeValueAsString(predictions);
-		System.out.println(smhiPrediction);
-
-        System.out.printf("%n***All current predictions***%n");
-        listPredictions();
-        System.out.printf("%n");
-
 		boolean runMenu = true;
 
 		while(runMenu == true){
@@ -53,6 +45,7 @@ public class Dag1Application implements CommandLineRunner {
 			System.out.println("2. Create");
 			System.out.println("3. Update");
 			System.out.println("4. Delete");
+			System.out.println("5.Look at SMHIs Forecasts");
 			System.out.println("9. Exit");
 
 			int sel = scan.nextInt();
@@ -62,10 +55,54 @@ public class Dag1Application implements CommandLineRunner {
 				case 2 -> addPredictions();
 				case 3 -> updatePrediction();
 				case 4 -> deletePrediction();
+				case 5 -> smhi();
 				case 9 -> runMenu = false;
 				default -> System.out.println("Press one of the instructed buttons!");
 			}
 		}
+	}
+
+	private void smhi() throws IOException {
+		ObjectMapper objectMapper = new ObjectMapper();
+		JsonFactory jsonFactory = new JsonFactory();
+
+		Predictions predictions = objectMapper.readValue(new URL("https://opendata-download-metfcst.smhi.se/api/category/pmp3g/version/2/geotype/point/lon/14.436469/lat/61.13366/data.json"), Predictions.class);
+
+		int num = 1;
+		int selectedNumber;
+		boolean valid = true;
+
+		for (TimeSeries timeSeries : predictions.getTimeSeries()) {
+			String validTime = timeSeries.getValidTime();
+			System.out.printf("%d) Valid Time: %s%n", num++, validTime);
+		}
+
+		do {
+			System.out.println("Enter the number of the Valid Time:");
+			selectedNumber = scan.nextInt();
+			if (selectedNumber == predictions.getTimeSeries().size()) {
+				String targetValidTime = predictions.getTimeSeries().get(selectedNumber - 1).getValidTime();
+
+				System.out.println("Selected Valid Time: " + targetValidTime);
+
+				for (TimeSeries timeSeries : predictions.getTimeSeries()) {
+					String validTime = timeSeries.getValidTime();
+
+					if (validTime.equals(targetValidTime)) {
+						// Extract and process other data from timeSeries as needed
+						for (Parameter parameter : timeSeries.getParameters()) {
+							String paramName = parameter.getName();
+							List paramValue = parameter.getValues();
+							int paramLvl = parameter.getLevel();
+							String paramLvlTyp = parameter.getLevelType();
+							String paramUnit = parameter.getUnit();
+							// Extract more parameter details as needed
+							System.out.printf("%n Level: %d %nLevelType: %s %nParameter: %s  %nValue: %s %nUnit: %s%n", paramLvl, paramLvlTyp, paramName, paramValue, paramUnit);
+						}
+					}
+				}
+			}
+		} while (selectedNumber != predictions.getTimeSeries().size());
 	}
 
 	private void  listPredictions(){
@@ -180,6 +217,9 @@ public class Dag1Application implements CommandLineRunner {
 			num++;
 		}
 	}
+
+
+
 }
 
 
