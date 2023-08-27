@@ -64,13 +64,11 @@ public class Dag1Application implements CommandLineRunner {
 
 	private void smhi() throws IOException {
 		ObjectMapper objectMapper = new ObjectMapper();
-		JsonFactory jsonFactory = new JsonFactory();
 
 		Predictions predictions = objectMapper.readValue(new URL("https://opendata-download-metfcst.smhi.se/api/category/pmp3g/version/2/geotype/point/lon/14.436469/lat/61.13366/data.json"), Predictions.class);
 
 		int num = 1;
 		int selectedNumber;
-		boolean valid = true;
 
 		for (TimeSeries timeSeries : predictions.getTimeSeries()) {
 			String validTime = timeSeries.getValidTime();
@@ -80,7 +78,7 @@ public class Dag1Application implements CommandLineRunner {
 		do {
 			System.out.println("Enter the number of the Valid Time:");
 			selectedNumber = scan.nextInt();
-			if (selectedNumber == predictions.getTimeSeries().size()) {
+			if (selectedNumber >= 1 && selectedNumber <= predictions.getTimeSeries().size()) {
 				String targetValidTime = predictions.getTimeSeries().get(selectedNumber - 1).getValidTime();
 
 				System.out.println("Selected Valid Time: " + targetValidTime);
@@ -89,14 +87,14 @@ public class Dag1Application implements CommandLineRunner {
 					String validTime = timeSeries.getValidTime();
 
 					if (validTime.equals(targetValidTime)) {
-						// Extract and process other data from timeSeries as needed
+
 						for (Parameter parameter : timeSeries.getParameters()) {
 							String paramName = parameter.getName();
 							List paramValue = parameter.getValues();
 							int paramLvl = parameter.getLevel();
 							String paramLvlTyp = parameter.getLevelType();
 							String paramUnit = parameter.getUnit();
-							// Extract more parameter details as needed
+
 							System.out.printf("%n Level: %d %nLevelType: %s %nParameter: %s  %nValue: %s %nUnit: %s%n", paramLvl, paramLvlTyp, paramName, paramValue, paramUnit);
 						}
 					}
@@ -149,11 +147,11 @@ public class Dag1Application implements CommandLineRunner {
 		int sel;
 		do {
 			sel = scan.nextInt();
-			if (sel > forecastService.getForecasts().size()){
+			if (sel <= 0 || sel > forecastService.getForecasts().size()){
 				System.out.printf("That prediction those not exist! Try a different number.%n");
 				forIForecasts();
 			}
-		}while (sel > forecastService.getForecasts().size());
+		}while (sel <= 0 || sel > forecastService.getForecasts().size());
 
 			var changeForecast = forecastService.getByIndex(sel -1);
 
