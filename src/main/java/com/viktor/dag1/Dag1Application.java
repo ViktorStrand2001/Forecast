@@ -14,9 +14,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.List;
-import java.util.Scanner;
-import java.util.UUID;
+import java.sql.SQLOutput;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 
 @SpringBootApplication
@@ -28,6 +31,10 @@ public class Dag1Application implements CommandLineRunner {
 	private ForecastService forecastService;
 	private Forecast forecast;
 	private TimeSeries timeSeries;
+
+	String yyyy = "";
+	String mm = "";
+	String dd = "";
 
 	public static void main(String[] args) {
 
@@ -45,7 +52,7 @@ public class Dag1Application implements CommandLineRunner {
 			System.out.println("2. Create");
 			System.out.println("3. Update");
 			System.out.println("4. Delete");
-			System.out.println("5.Look at SMHIs Forecasts");
+			System.out.println("5. SMHI Forecasts");
 			System.out.println("9. Exit");
 
 			int sel = scan.nextInt();
@@ -77,8 +84,10 @@ public class Dag1Application implements CommandLineRunner {
 
 		do {
 			System.out.println("Enter the number of the Valid Time:");
+			
 			selectedNumber = scan.nextInt();
-			if (selectedNumber >= 1 && selectedNumber <= predictions.getTimeSeries().size()) {
+
+			if (selectedNumber >= 1 && selectedNumber <= 24) {
 				String targetValidTime = predictions.getTimeSeries().get(selectedNumber - 1).getValidTime();
 
 				System.out.println("Selected Valid Time: " + targetValidTime);
@@ -95,7 +104,8 @@ public class Dag1Application implements CommandLineRunner {
 							String paramLvlTyp = parameter.getLevelType();
 							String paramUnit = parameter.getUnit();
 
-							System.out.printf("%n Level: %d %nLevelType: %s %nParameter: %s  %nValue: %s %nUnit: %s%n", paramLvl, paramLvlTyp, paramName, paramValue, paramUnit);
+							System.out.printf("%nLevel: %d %nParameter: %s  %nValue: %s%n", paramLvl, paramName, paramValue);
+
 						}
 					}
 				}
@@ -105,34 +115,52 @@ public class Dag1Application implements CommandLineRunner {
 
 	private void  listPredictions(){
 		for (var prediction : forecastService.getForecasts()){
-			System.out.printf("ID: %s Date: %d Hour: %d Temp: %f %n",
+			System.out.printf("ID: %s Date: %s Hour: %d Temp: %f %n",
 					prediction.getId(),
 					prediction.getDate(),
 					prediction.getHour(),
 					prediction.getTemperature()
 			);
 		}
+		System.out.println("Here's all the current forecasts ^");
 	}
 
 	private void addPredictions() throws IOException {
 
 		Forecast forecast = new Forecast();
 
-		System.out.println("---Set yyyyMMdd---");
-		int date = scan.nextInt();
+		String pattern = "yyyy-MM-dd";
+		SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
+		String date = simpleDateFormat.format(new Date());
+
+		System.out.printf("Is this the date you want to use: %s %n If YES press 1, if NO press 2", date);
+
+		if (scan.nextInt() == 2){
+
+			System.out.println("What date do you want to put in?");
+			System.out.println("yyyy");
+			yyyy = scan.next();
+			System.out.println("mm");
+			mm = scan.next();
+			System.out.println("dd");
+			dd = scan.next();
+
+			String time = yyyy + "-" + mm + "-" + dd;
+
+			forecast.setDate(time);
+		}else{
+			forecast.setDate(date);
+		}
 
 		System.out.println("---Set time of day:---");
 		int hour = scan.nextInt();
+		forecast.setHour(hour);
 
 		System.out.println("---Set temperature---");
 		float temp = scan.nextFloat();
-
-
-		forecast.setId(UUID.randomUUID());
-		forecast.setDate(date);
-		forecast.setHour(hour);
 		forecast.setTemperature(temp);
 
+		forecast.setId(UUID.randomUUID());
 		forecastService.add(forecast);
 	}
 
@@ -159,8 +187,14 @@ public class Dag1Application implements CommandLineRunner {
 			System.out.printf("What do you want to update?%n 1: Date%n 2: time of day%n 3: Temperature%n 9: Exit and save");
 			switch (scan.nextInt()) {
 				case 1 -> {
-					System.out.print("New Date:");
-					changeForecast.setDate(scan.nextInt());
+					System.out.println("---yyyy---");
+					yyyy = scan.next();
+					System.out.println("---MM---");
+					mm = scan.next();
+					System.out.println("---dd---");
+					dd = scan.next();
+					String time = yyyy + "-" + mm + "-" + dd;
+					changeForecast.setDate(time);
 				}
 				case 2 -> {
 					System.out.print("New time of day:");
@@ -207,7 +241,7 @@ public class Dag1Application implements CommandLineRunner {
 	private void forIForecasts(){
 		int num = 1;
 		for(var prediction : forecastService.getForecasts()){
-			System.out.printf("%d) Date:%d  Kl:%d  Temp:%fC   %n"
+			System.out.printf("%d) Date:%s  Kl:%d  Temp:%fC   %n"
 					,num, prediction.getDate(),
 					prediction.getHour(),
 					prediction.getTemperature()

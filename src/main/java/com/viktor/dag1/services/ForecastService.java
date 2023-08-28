@@ -11,9 +11,7 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class ForecastService{
@@ -42,17 +40,32 @@ public class ForecastService{
         return forecasts.get(i);
     }
 
-    public void update (Forecast forecast) throws IOException {
+    public void updateFromApi (Forecast forecastFromUser) throws IOException {
+
+        var forecastInList = getId(forecastFromUser.getId()).get();
+        forecastInList.setDate(forecastFromUser.getDate());
+        forecastInList.setHour(forecastFromUser.getHour());
+        forecastInList.setTemperature(forecastFromUser.getTemperature());
         writeAllToFile(forecasts);
+    }
+
+
+    public void update (Forecast forecast) throws IOException {
+
+        writeAllToFile(forecasts);
+    }
+
+    public Optional<Forecast> getId(UUID id){
+       // Kollar alla forecasts 1 efter 1.
+        // Kollar så att getId är lika med id och tar första som den hittar.
+        // Där det står forecast -> forecast kan heta vad som t.ex c -> c
+        return getForecasts().stream().filter(c -> c.getId().equals(id)).findFirst();
     }
 
     public void deleted(Forecast forecast){
         forecasts.remove(forecast);
     }
 
-    public void showPrediction(){
-
-    }
 
 
 // file hantering

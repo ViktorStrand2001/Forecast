@@ -1,15 +1,15 @@
 package com.viktor.dag1.models;
 
+import java.util.Date;
 import java.util.UUID;
 
 public class Forecast {
 
     // variabels
     private UUID id;
-    private int date;
+    private String date;
     private int hour;
     private float temperature;
-
 
 // Getters Setters
     public UUID getId() {
@@ -20,11 +20,11 @@ public class Forecast {
         this.id = id;
     }
 
-    public int getDate() {
+    public String getDate() {
         return date;
     }
 
-    public void setDate(int date) {
+    public void setDate(String date) {
         this.date = date;
     }
 
