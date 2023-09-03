@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.viktor.dag1.models.Forecast;
-import com.viktor.dag1.models.Predictions;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -31,9 +30,11 @@ public class ForecastService{
         return forecasts;
     }
 
-    public void add(Forecast forecast) throws IOException {
+    public Forecast add(Forecast forecast) throws IOException {
+        forecast.setId(UUID.randomUUID());
         forecasts.add(forecast);
         writeAllToFile(forecasts);
+        return forecast;
     }
 
     public Forecast getByIndex(int i) {
@@ -51,7 +52,6 @@ public class ForecastService{
 
 
     public void update (Forecast forecast) throws IOException {
-
         writeAllToFile(forecasts);
     }
 
@@ -62,14 +62,14 @@ public class ForecastService{
         return getForecasts().stream().filter(c -> c.getId().equals(id)).findFirst();
     }
 
-    public void deleted(Forecast forecast){
-        forecasts.remove(forecast);
+    public boolean deleted(Forecast forecast){
+      return forecasts.remove(forecast);
     }
 
 
 
 // file hantering
-    private List<Forecast> readFromFile() throws IOException, IOException {
+    private List<Forecast> readFromFile() throws IOException {
         if(!Files.exists(Path.of("predictions.json"))) return new ArrayList<Forecast>();
         ObjectMapper objectMapper = getObjectMapper();
         var jsonStr = Files.readString(Path.of("predictions.json"));

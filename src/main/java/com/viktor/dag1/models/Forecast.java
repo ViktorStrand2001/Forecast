@@ -1,5 +1,7 @@
 package com.viktor.dag1.models;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.UUID;
 
@@ -7,7 +9,7 @@ public class Forecast {
 
     // variabels
     private UUID id;
-    private String date;
+    private LocalDate date;
     private int hour;
     private float temperature;
 
@@ -20,11 +22,11 @@ public class Forecast {
         this.id = id;
     }
 
-    public String getDate() {
+    public LocalDate getDate() {
         return date;
     }
 
-    public void setDate(String date) {
+    public void setDate(LocalDate date) {
         this.date = date;
     }
 
@@ -43,6 +45,4 @@ public class Forecast {
     public void setTemperature(float temperature) {
         this.temperature = temperature;
     }
-
-
 }
