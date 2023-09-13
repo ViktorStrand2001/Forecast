@@ -1,5 +1,6 @@
 package com.viktor.dag1.controller;
 
+import com.viktor.dag1.dto.AverageDTO;
 import com.viktor.dag1.dto.ForecastListDTO;
 import com.viktor.dag1.dto.NewForecastDTO;
 import com.viktor.dag1.models.Forecast;
@@ -10,10 +11,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static org.springframework.http.HttpStatus.NO_CONTENT;
 
 
 // client anropar /api/forecasts GET
@@ -32,24 +36,12 @@ public class ForecastController {
     @GetMapping("/api/forecasts")
     public ResponseEntity<List<ForecastListDTO>> getAll(){
 
-/*       var ret = new ArrayList<ForecastListDTO>();
-        for(var c : forecastService.getForecasts()){
-            var forecastListDTO = new ForecastListDTO();
-            forecastListDTO.Id = c.getId();
-            forecastListDTO.Date = c.getDate();
-            forecastListDTO.Temperature = c.getTemperature();
-            forecastListDTO.Hour = c.getHour();
-            ret.add(forecastListDTO);
-        }
-        return ret;
-*/
-
         return new ResponseEntity<List<ForecastListDTO>>(forecastService.getForecasts().stream().map(forecast->{
             var forecastListDTO = new ForecastListDTO();
             forecastListDTO.Id = forecast.getId();
-            forecastListDTO.Date = forecast.getDate();
-            forecastListDTO.Temperature = forecast.getTemperature();
-            forecastListDTO.Hour = forecast.getHour();
+            forecastListDTO.Date = forecast.getPredictionDatum();
+            forecastListDTO.Temperature = forecast.getPredictionTemperature();
+            forecastListDTO.Hour = forecast.getPredictionHour();
             return forecastListDTO;
         }).collect(Collectors.toList()), HttpStatus.OK);
     }
@@ -62,15 +54,34 @@ public class ForecastController {
 
     }
 
+    @GetMapping("/api/average/{date}")
+    public ResponseEntity<List<AverageDTO>> getAvg(@PathVariable String date){
+
+        try {
+            LocalDate realDate = LocalDate.parse(date);
+            List<AverageDTO> result = forecastService.calculateAverage(realDate);
+
+            if (result.isEmpty()) {
+                return new ResponseEntity<>(result, NO_CONTENT);
+            }
+
+            return new ResponseEntity<>(result, HttpStatus.OK);
+
+        }catch (Exception e) {
+            e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     @PutMapping("/api/forecasts/{id}")
-    public ResponseEntity<Forecast> Update(@PathVariable UUID id, @RequestBody NewForecastDTO newForecastDTO) throws IOException {
+    public ResponseEntity<Forecast> Update(@PathVariable UUID id, @RequestBody NewForecastDTO newForecastDTO){
 
        // mappar från DTO till entitet
-        var forecast = new Forecast();
+        var forecast = new Forecast(UUID.randomUUID());
         forecast.setId(id);
-        forecast.setDate(newForecastDTO.date);
-        forecast.setHour(newForecastDTO.hour);
-        forecast.setTemperature(newForecastDTO.temperature);
+        forecast.setPredictionDatum(newForecastDTO.getDate());
+        forecast.setPredictionHour(newForecastDTO.getHour());
+        forecast.setPredictionTemperature(newForecastDTO.getTemperature());
         forecastService.updateFromApi(forecast);
         return ResponseEntity.ok(forecast);
     }
@@ -80,13 +91,4 @@ public class ForecastController {
     var newCreated = forecastService.add(forecast);
         return ResponseEntity.ok(newCreated); // mer REST ful = created (204) samt url till produkten
     }
-
-    /*
-    @DeleteMapping("/api/forecasts/{id}")
-    public ResponseEntity<Forecast> Delete(@PathVariable UUID id) {
-        Optional<Forecast> forecast = forecastService.getId(id);
-        if (forecast.isPresent()) return ResponseEntity.ok(forecast.get());
-        return ResponseEntity.notFound().build();
-    }
-     */
 }

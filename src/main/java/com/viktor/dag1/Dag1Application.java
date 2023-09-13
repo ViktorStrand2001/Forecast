@@ -1,23 +1,26 @@
 package com.viktor.dag1;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.viktor.dag1.models.Forecast;
-import com.viktor.dag1.models.Parameter;
-import com.viktor.dag1.models.Predictions;
-import com.viktor.dag1.models.TimeSeries;
+import com.viktor.dag1.dto.AverageDTO;
+import com.viktor.dag1.dto.ForecastListDTO;
+import com.viktor.dag1.models.*;
+import com.viktor.dag1.repositories.IForecastRepository;
 import com.viktor.dag1.services.ForecastService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /*TODO- G
 *  Matcha datum och tid istället för index i average.
@@ -30,19 +33,9 @@ public class Dag1Application implements CommandLineRunner {
 
 	@Autowired
 	private ForecastService forecastService;
+	@Autowired
+	private IForecastRepository iForecastRepository;
 	private Forecast forecast;
-
-
-	ObjectMapper objectMapper = new ObjectMapper();
-	Predictions predictions;
-
-	{
-		try {
-			predictions = objectMapper.readValue(new URL("https://opendata-download-metfcst.smhi.se/api/category/pmp3g/version/2/geotype/point/lon/14.436469/lat/61.13366/data.json"), Predictions.class);
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
-	}
 
 	public static void main(String[] args) {
 
@@ -52,16 +45,22 @@ public class Dag1Application implements CommandLineRunner {
 	@Override
 	public void run(String... args) throws Exception {
 
+		deleteAllDummys();
+		dummyAdd();
+		smhi();
+		System.out.println("---Removing all date and fetching new data for today---");
+
 		boolean runMenu = true;
 
-		while(runMenu == true){
-			System.out.println("--- PRESS ---");
+		while (runMenu == true) {
 			System.out.println("1. List all");
 			System.out.println("2. Create");
 			System.out.println("3. Update");
 			System.out.println("4. Delete");
 			System.out.println("5. SMHI Forecasts");
-			System.out.println("6. Average");
+			System.out.println("6. dummyAdd");
+			System.out.println("7. deleteAllDummys");
+			System.out.println("8. calculateAverage");
 			System.out.println("9. Exit");
 
 			int sel = scan.nextInt();
@@ -72,261 +71,160 @@ public class Dag1Application implements CommandLineRunner {
 				case 3 -> updatePrediction();
 				case 4 -> deletePrediction();
 				case 5 -> smhi();
+				case 6 -> dummyAdd();
+				case 7 -> deleteAllDummys();
+				case 8 -> calculateAverage();
 				case 9 -> runMenu = false;
 				default -> System.out.println("Press one of the instructed buttons!");
 			}
 		}
 	}
 
+	private void dummyAdd() {
+		for (int i = 0; i < 24; i++) {
+			var forecast1 = new Forecast();
+			forecast1.setId(UUID.randomUUID());
+			forecast1.setPredictionTemperature(i);
+			forecast1.setPredictionHour(i);
+			LocalDate date = LocalDate.of(2023, 9, 13);
+			LocalDate data = LocalDate.parse(date.toString());
+			forecast1.setPredictionDatum(data);
+			forecastService.add(forecast1);
+		}
+	}
 
+	private void deleteAllDummys() {
+		for (var forecast : forecastService.getForecasts()) {
+			forecastService.deleted(forecast);
+		}
+	}
+
+	private void calculateAverage(){
+		var dag = LocalDate.now();
+		List<AverageDTO> dtos = forecastService.calculateAverage(dag);
+
+		for (int i = 0; i < 24; i++) {
+			System.out.printf("%s Average: %s KL: %s %n", dtos.get(i).getDate(), dtos.get(i).getAverage(), dtos.get(i).getHour() );
+		}
+
+
+	}
 
 	// Show all SMHIs forecast in 24 hours
-	private void smhi(){
+	private void smhi() throws IOException {
 
+		String paramName;
+		List paramValue = null;
+		int paramLvl;
+		String paramLvlType;
+		String paramUnit;
 
+		Forecast forecast = new Forecast();
 
-/*
-		int totalEntries = predictions.getTimeSeries().size();
+		var objectMapper = new ObjectMapper();
 
-		for (int num = 1; num <= 24; num++) {
-			if (num <= totalEntries) {
-				TimeSeries timeSeries = predictions.getTimeSeries().get(num - 1);
-				String validTime = timeSeries.getValidTime();
-				System.out.printf("%d) Valid Time: %s%n", num, validTime);
-			} else {
-				System.out.printf("%d) No data available%n", num);
-			}
+		Predictions predictions = objectMapper.readValue(new URL("https://opendata-download-metfcst.smhi.se/api/category/pmp3g/version/2/geotype/point/lon/16.158/lat/58.5812/data.json"), Predictions.class);
+
+		Date today = new Date();
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTime(today);
+		calendar.add(Calendar.HOUR_OF_DAY,24);
+		Date tomorrow = calendar.getTime(); // 13:00 till 13:00 nästa dag
+
+		int nummer = 0;
+		for (TimeSeries timeSeries : predictions.getTimeSeries()) {
+			Date validTime = timeSeries.getValidTime();
+			System.out.printf("%d) Valid Time: %s%n", nummer++, validTime);
 		}
 
 		System.out.println("***********************************************");
 		System.out.printf(" ApprovedTime: %s %n ReferenceTime: %s %n Geometry: %s, %s %n", predictions.getApprovedTime(), predictions.getReferenceTime(),predictions.getGeometry().getType(),predictions.getGeometry().getCoordinates());
 		System.out.println("***********************************************");
 
-		// Välja data baserat å date+time
-		String selectedDate, selectedTime = "00";
-		selectedDate = scan.next();
-		do {
+		for (TimeSeries timeSeries : predictions.getTimeSeries()) {
 
-			String paramName;
-			List paramValue = null;
-			int paramLvl;
-			String paramLvlType;
-			String paramUnit;
+			Date validTime = timeSeries.getValidTime();
 
-			System.out.println("Enter the Valid Date (yyyy-MM-dd):");
 
-			System.out.println("Enter the Valid Time (HH):");
-			selectedTime = "00";
+			if (validTime != null) {
 
-			String selectedDateTime = selectedDate + "T" + selectedTime + ":00:00Z";
+				// omvandla till local tid i variabel som ska sparas till databasen
+				LocalDate validLocalDate = validTime.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+				LocalTime validLocalTime = validTime.toInstant().atZone(ZoneId.systemDefault()).toLocalTime();
 
-			for (TimeSeries timeSeries : predictions.getTimeSeries()) {
-				String validTime = timeSeries.getValidTime();
+				int hourOfDay = validLocalTime.getHour();
 
-				try {
-					// Omvandla strängen till ett heltal
-					int num = Integer.parseInt(selectedTime);
+				calendar.setTime(validTime);
 
-					// Öka värdet med 1
-					num = num + 1;
-
-					// Konvertera det ökade värdet tillbaka till en sträng
-					selectedTime = Integer.toString(num);
-
-					// Skriv ut den ökade strängen
-					System.out.println("Den ökade strängen: " + selectedTime);
-				} catch (NumberFormatException e) {
-					System.err.println("Strängen representerar inte ett giltigt heltal.");
-				}
-
-				if (validTime.equals(selectedDateTime)) {
-					// Extract and process other data from timeSeries as needed
+				if (validTime.after(today) && validTime.before(tomorrow)) {
 					for (Parameter parameter : timeSeries.getParameters()) {
-						if (parameter.getName().equals("t")){
-							paramName = parameter.getName();
-							paramValue = parameter.getValues();
-							paramLvl = parameter.getLevel();
-							paramLvlType = parameter.getLevelType();
-							paramUnit = parameter.getUnit();
-							// Extract more parameter details as needed
-							System.out.printf("\n Name: %s %n Level type: %s %n Level: %d %n Unit: %s %n Value: %s\n", paramName, paramLvlType, paramLvl, paramUnit, paramValue);
-						}
-					}
+						List<Float> values = parameter.getValues();
 
-					// listPredictions();
-
-					System.out.println("Enter Valid index to compare temp with: ");
-
-					// Värdet från Admin CLI
-
-					var selectedForecast = forecastService.getByIndex(0);
-					float admin = selectedForecast.getTemperature();
-					// Värdet från Smhi
-					Object valueFromList = paramValue.get(0);
-					float smhi = valueFromList.hashCode();
-					// AVG-värdet från dessa två
-					float sum = average(admin,smhi);
-
-					System.out.println("------------------------------------------------------\n\t\tThe average temp of "
-							+ selectedDate + " " + selectedTime + " is \n\t\t" + sum +
-							" C\n------------------------------------------------------"); // paramValue.get(0)
-				}
-			}
-
-		} while (selectedTime.equals("23")); // You can use any condition to exit the loop
-*/
-
-
-
-		// Ditt befintliga kodblock innan loopen
-		// Exempel:
-		String paramName;
-		List paramValue = null;
-		int paramLvl;
-		String paramLvlType;
-		String paramUnit;
-		String selectedTime, selectedDate;
-		int index = 0;
-
-		int totalEntries = predictions.getTimeSeries().size();
-
-		for (int num = 1; num <= 24; num++) {
-			if (num <= totalEntries) {
-				TimeSeries timeSeries = predictions.getTimeSeries().get(num - 1);
-				String validTime = timeSeries.getValidTime();
-				System.out.printf("%d) Valid Time: %s%n", num, validTime);
-			} else {
-				System.out.printf("%d) No data available%n", num);
-			}
-		}
-
-		System.out.println("Enter the Valid Date (yyyy-MM-dd):");
-		selectedDate = scan.next();
-
-		for (int hour = 0; hour < 24; hour++) {
-			selectedTime = String.format("%02d", hour);
-
-			String selectedDateTime = selectedDate + "T" + selectedTime + ":00:00Z";
-
-			for (TimeSeries timeSeries : predictions.getTimeSeries()) {
-				String validTime = timeSeries.getValidTime();
-
-				if (validTime.equals(selectedDateTime)) {
-					// Ditt befintliga kodblock för att hämta temperaturvärden och annan data
-					// Exempel:
-					for (Parameter parameter : timeSeries.getParameters()) {
-						if (parameter.getName().equals("t")) {
-							paramName = parameter.getName();
-							paramValue = parameter.getValues();
-							paramLvl = parameter.getLevel();
-							paramLvlType = parameter.getLevelType();
-							paramUnit = parameter.getUnit();
-							System.out.println(parameter.getValues());
-							// Extract more parameter details as needed
-						}
-					}
-
-					// Beräkna genomsnittstemperaturen per timme
-					if (paramValue != null && !paramValue.isEmpty()) {
-
-						listPredictions();
-						var selectedForecast = forecastService.getByIndex(index ++);
-
-
-
-						float smhi = Float.parseFloat(paramValue.get(0).toString());
-						float sum = selectedForecast.getTemperature() + smhi;
-
-						float average = sum / 2;
-
-						System.out.println("------------------------------------------------------");
-						System.out.println("The average temp for " + selectedDate + " " + selectedTime + " is:");
-						System.out.println(average + " C");
-						System.out.println("------------------------------------------------------");
-
-					}
-				}
-			}
-		}
-
-		// Ditt befintliga kodblock efter loopen
-		// Exempel:
-		System.out.println("Other code after the loop...");
-
-
-
-
-/*
-		int selectedNumber;
-		int totalEntries = predictions.getTimeSeries().size();
-
-		for (int num = 1; num <= 24; num++) {
-			if (num <= totalEntries) {
-				TimeSeries timeSeries = predictions.getTimeSeries().get(num - 1);
-				String validTime = timeSeries.getValidTime();
-				System.out.printf("%d) Valid Time: %s%n", num, validTime);
-			} else {
-				System.out.printf("%d) No data available%n", num);
-			}
-		}
-
-		do {
-
-			String paramName;
-			List paramValue = null;
-			int paramLvl;
-			String paramLvlTyp;
-			String paramUnit;
-
-			System.out.println("Enter the number of the Valid Time:");
-			selectedNumber = scan.nextInt();
-
-			System.out.println();
-
-
-			if (selectedNumber >= 1 && selectedNumber <= 24) {
-				String targetValidTime = predictions.getTimeSeries().get(selectedNumber - 1).getValidTime();
-				System.out.println("Selected Valid Time: " + targetValidTime);
-
-				for (TimeSeries timeSeries : predictions.getTimeSeries()) {
-					String validTime = timeSeries.getValidTime();
-
-					if (validTime.equals(targetValidTime)) {
-						for (Parameter parameter : timeSeries.getParameters()) {
+						for (Float parameterValue : values)
 							if (parameter.getName().equals("t")){
-
 								paramName = parameter.getName();
 								paramValue = parameter.getValues();
 								paramLvl = parameter.getLevel();
+								paramLvlType = parameter.getLevelType();
+								paramUnit = parameter.getUnit();
 
-								System.out.printf("%nLevel: %d %nParameter: %s  %nValue: %s%n", paramLvl, paramName, paramValue);
+								System.out.println("------------------------------------------------\n");
+								System.out.println("\t\tTemperature info:");
+								System.out.printf("\n Name: %s %n Level type: %s %n Level: %d %n Unit: %s %n Value: %s\n",
+										paramName,
+										paramLvlType,
+										paramLvl,
+										paramUnit,
+										paramValue);
+
+								forecast.setPredictionHour(hourOfDay);
+								forecast.setPredictionDatum(validLocalDate);
+								forecast.setPredictionTemperature(parameterValue);
+
+
+							} else if (parameter.getName().equals("pcat")) {
+								System.out.println("\t\tNederbörd (precipitation) info:");
+								System.out.printf("\n Name: %s %n Level type: %s %n Level: %d %n Unit: %s %n Value: %s\n____________________\n",
+										parameter.getName(),
+										parameter.getLevelType(),
+										parameter.getLevel(),
+										parameter.getUnit(),
+										parameter.getValues());
+
+
+								if (parameterValue == 0.0) {
+									System.out.println("pcat value: " + parameterValue);
+									System.out.println("No precipitation");
+									forecast.setRainOrSnow(false);
+
+								} else if (parameterValue == 1.0) {
+									System.out.println("pcat value: " + parameterValue);
+									System.out.println("Snow");
+									forecast.setRainOrSnow(true);
+
+								} else if (parameterValue == 2.0) {
+									System.out.println("pcat value: " + parameterValue);
+									System.out.println("Snow and rain");
+									forecast.setRainOrSnow(true);
+
+								} else if (parameterValue == 3.0) {
+									System.out.println("pcat value: " + parameterValue);
+									System.out.println("Rain");
+									forecast.setRainOrSnow(true);
+
+								} else if (parameterValue == null) {
+									System.out.println("pcat value: " + parameterValue);
+									System.out.println("No precipitation");
+									forecast.setRainOrSnow(false);
+								}
+								forecast.setDataSource(DataSource.SMHI);
+								iForecastRepository.save(forecast);
+								System.out.println("\n------------------------------------------------\n");
 							}
-						}
-
-						// Går räknar ut average temp mellan bestämda dagar och timme
-						listPredictions();
-						int sel = scan.nextInt();
-						var selectedForecast = forecastService.getByIndex(sel -1);
-
-						Object valueFromList = paramValue.get(0);
-
-						float sum = selectedForecast.getTemperature() + valueFromList.hashCode();
-
-						float average = sum / 2;
-
-						System.out.println("The average " + average + "C");
 					}
 				}
 			}
-		} while (selectedNumber < 1 || selectedNumber >= 24);
-*/
-
-
-
-	}
-
-	private float average(float a, float b) {
-		return (a+b)/2;
+		}
 	}
 
 	// LIST ALL
@@ -336,25 +234,26 @@ public class Dag1Application implements CommandLineRunner {
 		Collections.sort(forecastService.getForecasts(), new Comparator<Forecast>() {
 			@Override
 			public int compare(Forecast forecast1, Forecast forecast2) {
-				return forecast1.getDate().compareTo(forecast2.getDate());
+				return forecast1.getPredictionDatum().compareTo(forecast2.getPredictionDatum());
 			}
 		});
 
 		for(var forecast : forecastService.getForecasts()) {
-			System.out.printf("\t%d) %n\tId: %s %n\tDag: %s Tid: %d:00 %n\tTemp: %.1f %n %n",
+			System.out.printf("\t%d) %n\tId: %s %n\tDag: %s Tid: %d:00 %n\tTemp: %.1f \t%n It will rain or snow: %b %n %n",
 					num++,
 					forecast.getId(),
-					forecast.getDate(),
-					forecast.getHour(),
-					forecast.getTemperature()
+					forecast.getPredictionDatum(),
+					forecast.getPredictionHour(),
+					forecast.getPredictionTemperature(),
+					forecast.isRainOrSnow()
 			);
 		}
 	}
 
 	// LIST Create
-	private void addPredictions() throws IOException {
+	private void addPredictions() {
 
-		Forecast forecast = new Forecast();
+		Forecast forecast = new Forecast(UUID.randomUUID());
 
 		System.out.println("year");
 		int year = scan.nextInt();
@@ -366,22 +265,22 @@ public class Dag1Application implements CommandLineRunner {
 
 		LocalDate date = LocalDate.of(year,mouth,day);
 
-		forecast.setDate(date);
+		forecast.setPredictionDatum(date);
 
 		System.out.println("---- Set time of day: ----");
 		int hour = scan.nextInt();
-		forecast.setHour(hour);
+		forecast.setPredictionHour(hour);
 
 		System.out.println("---- Set temperature ----");
 		float temp = scan.nextFloat();
-		forecast.setTemperature(temp);
+		forecast.setPredictionTemperature(temp);
 
 		forecast.setId(UUID.randomUUID());
 		forecastService.add(forecast);
 	}
 
 	// LIST UPDATE
-	private void updatePrediction() throws IOException {
+	private void updatePrediction() {
 
 		boolean runUpdate = true;
 
@@ -415,19 +314,19 @@ public class Dag1Application implements CommandLineRunner {
 					LocalDate date = LocalDate.of(year,mouth,day);
 					LocalDate data = LocalDate.parse(date.toString());
 
-					changeForecast.setDate(data);
+					changeForecast.setPredictionDatum(data);
 				}
 				case 2 -> {
 					System.out.print("New time of day:");
-					changeForecast.setHour(scan.nextInt());
+					changeForecast.setPredictionHour(scan.nextInt());
 				}
 				case 3 -> {
 					System.out.print("New temperature:");
-					changeForecast.setTemperature(scan.nextFloat());
+					changeForecast.setPredictionTemperature(scan.nextFloat());
 
 				}
 				case 9 -> {
-					forecastService.update(forecast);
+					forecastService.update(changeForecast);
 					runUpdate = false;
 				}
 				default -> System.out.println(" Select between 1-3 or 9");
@@ -436,7 +335,7 @@ public class Dag1Application implements CommandLineRunner {
 	}
 
 	// LIST DELETE
-	private void deletePrediction() throws IOException {
+	private void deletePrediction(){
 
 		listPredictions();
 
@@ -448,7 +347,6 @@ public class Dag1Application implements CommandLineRunner {
 			case 1 -> {
 				System.out.printf("Forecast has been deleted%n");
                 forecastService.deleted(selectedForecast);
-				forecastService.update(selectedForecast);
 			}
 			case 2 -> {
 				System.out.printf("Forecast was not deleted%n");
@@ -457,7 +355,6 @@ public class Dag1Application implements CommandLineRunner {
 				System.out.println("Invalid choice. Please press 1 for YES or 2 For NO");
 			}
 		}
-
 	}
 }
 

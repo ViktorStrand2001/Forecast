@@ -2,21 +2,22 @@ package com.viktor.dag1.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.Date;
 import java.util.List;
 
 public class TimeSeries {
     @JsonProperty("validTime")
-    private String validTime;
+    private Date validTime;
     @JsonProperty("parameters")
     private List<Parameter> parameters;
 
     @JsonProperty("validTime")
-    public String getValidTime() {
+    public Date getValidTime() {
         return validTime;
     }
 
     @JsonProperty("validTime")
-    public void setValidTime(String validTime) {
+    public void setValidTime(Date validTime) {
         this.validTime = validTime;
     }
 
