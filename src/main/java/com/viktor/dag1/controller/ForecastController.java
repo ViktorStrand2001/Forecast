@@ -2,7 +2,6 @@ package com.viktor.dag1.controller;
 
 import com.viktor.dag1.dto.AverageDTO;
 import com.viktor.dag1.dto.ForecastListDTO;
-import com.viktor.dag1.dto.NewForecastDTO;
 import com.viktor.dag1.models.Forecast;
 import com.viktor.dag1.services.ForecastService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +9,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -39,9 +37,10 @@ public class ForecastController {
         return new ResponseEntity<List<ForecastListDTO>>(forecastService.getForecasts().stream().map(forecast->{
             var forecastListDTO = new ForecastListDTO();
             forecastListDTO.Id = forecast.getId();
-            forecastListDTO.Date = forecast.getPredictionDatum();
-            forecastListDTO.Temperature = forecast.getPredictionTemperature();
-            forecastListDTO.Hour = forecast.getPredictionHour();
+            forecastListDTO.predictionDatum = forecast.getPredictionDatum();
+            forecastListDTO.predictionTemperature = forecast.getPredictionTemperature();
+            forecastListDTO.predictionHour = forecast.getPredictionHour();
+            forecastListDTO.rainOrSnow = forecast.isRainOrSnow();
             return forecastListDTO;
         }).collect(Collectors.toList()), HttpStatus.OK);
     }
@@ -74,21 +73,25 @@ public class ForecastController {
     }
 
     @PutMapping("/api/forecasts/{id}")
-    public ResponseEntity<Forecast> Update(@PathVariable UUID id, @RequestBody NewForecastDTO newForecastDTO){
+    public ResponseEntity<Forecast> Update(@PathVariable UUID id, @RequestBody ForecastListDTO forecastListDTO){
 
        // mappar från DTO till entitet
-        var forecast = new Forecast(UUID.randomUUID());
-        forecast.setId(id);
-        forecast.setPredictionDatum(newForecastDTO.getDate());
-        forecast.setPredictionHour(newForecastDTO.getHour());
-        forecast.setPredictionTemperature(newForecastDTO.getTemperature());
-        forecastService.updateFromApi(forecast);
+        var forecast = forecastService.getId(id).get();
+        forecast.setPredictionDatum(forecastListDTO.predictionDatum);
+        forecast.setPredictionHour(forecastListDTO.predictionHour);
+        forecast.setPredictionTemperature(forecastListDTO.predictionTemperature);
+        forecast.setRainOrSnow(forecastListDTO.rainOrSnow);
+        forecast.setDataSource(forecastListDTO.DataSource);
+        forecast.setUpdated(LocalDate.now());
+
+        forecastService.update(forecast);
         return ResponseEntity.ok(forecast);
     }
 
     @PostMapping("/api/forecasts")
-    public ResponseEntity<Forecast> New(@RequestBody Forecast forecast) throws IOException {
+    public ResponseEntity<Forecast> New(@RequestBody Forecast forecast) {
     var newCreated = forecastService.add(forecast);
+    newCreated.setCreated(LocalDate.now());
         return ResponseEntity.ok(newCreated); // mer REST ful = created (204) samt url till produkten
     }
 }

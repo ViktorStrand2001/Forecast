@@ -1,18 +1,11 @@
 package com.viktor.dag1.services;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.viktor.dag1.dto.AverageDTO;
 import com.viktor.dag1.models.Forecast;
 import com.viktor.dag1.repositories.IForecastRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.io.StringWriter;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -68,7 +61,7 @@ public class ForecastService{
     }
 */
 
-    public void updateFromApi (Forecast forecastFromUser){
+    /*public void updateFromApi (Forecast forecastFromUser){
 
         var forecastInList = getId(forecastFromUser.getId()).get();
         forecastInList.setPredictionDatum(forecastFromUser.getPredictionDatum());
@@ -78,12 +71,11 @@ public class ForecastService{
 
 
         //    writeAllToFile(forecasts);
-    }
+    }*/
 
 
-    public Forecast update (Forecast forecast){
+    public void update (Forecast forecast){
         iForecastRepository.save(forecast);
-        return forecast;
         //    writeAllToFile(forecasts);
     }
 

@@ -63,18 +63,18 @@ public class Dag1Application implements CommandLineRunner {
 			System.out.println("8. calculateAverage");
 			System.out.println("9. Exit");
 
-			int sel = scan.nextInt();
+			String sel = scan.next();
 
 			switch (sel) {
-				case 1 -> listPredictions();
-				case 2 -> addPredictions();
-				case 3 -> updatePrediction();
-				case 4 -> deletePrediction();
-				case 5 -> smhi();
-				case 6 -> dummyAdd();
-				case 7 -> deleteAllDummys();
-				case 8 -> calculateAverage();
-				case 9 -> runMenu = false;
+				case "1" -> listPredictions();
+				case "2" -> addPredictions();
+				case "3" -> updatePrediction();
+				case "4" -> deletePrediction();
+				case "5" -> smhi();
+				case "6" -> dummyAdd();
+				case "7" -> deleteAllDummys();
+				case "8" -> calculateAverage();
+				case "9" -> runMenu = false;
 				default -> System.out.println("Press one of the instructed buttons!");
 			}
 		}
@@ -86,9 +86,10 @@ public class Dag1Application implements CommandLineRunner {
 			forecast1.setId(UUID.randomUUID());
 			forecast1.setPredictionTemperature(i);
 			forecast1.setPredictionHour(i);
-			LocalDate date = LocalDate.of(2023, 9, 13);
+			LocalDate date = LocalDate.now();
 			LocalDate data = LocalDate.parse(date.toString());
 			forecast1.setPredictionDatum(data);
+			forecast1.setCreated(data);
 			forecastService.add(forecast1);
 		}
 	}
@@ -99,15 +100,14 @@ public class Dag1Application implements CommandLineRunner {
 		}
 	}
 
-	private void calculateAverage(){
+	private void calculateAverage() {
 		var dag = LocalDate.now();
 		List<AverageDTO> dtos = forecastService.calculateAverage(dag);
 
-		for (int i = 0; i < 24; i++) {
-			System.out.printf("%s Average: %s KL: %s %n", dtos.get(i).getDate(), dtos.get(i).getAverage(), dtos.get(i).getHour() );
+		 // for (int i = 0; i < dtos.size(); i++)
+			for (AverageDTO dto : dtos) {
+			System.out.printf("%s Average: %s KL: %s %n", dto.getDate(), dto.getAverage(), dto.getHour());
 		}
-
-
 	}
 
 	// Show all SMHIs forecast in 24 hours
@@ -119,8 +119,6 @@ public class Dag1Application implements CommandLineRunner {
 		String paramLvlType;
 		String paramUnit;
 
-		Forecast forecast = new Forecast();
-
 		var objectMapper = new ObjectMapper();
 
 		Predictions predictions = objectMapper.readValue(new URL("https://opendata-download-metfcst.smhi.se/api/category/pmp3g/version/2/geotype/point/lon/16.158/lat/58.5812/data.json"), Predictions.class);
@@ -128,7 +126,7 @@ public class Dag1Application implements CommandLineRunner {
 		Date today = new Date();
 		Calendar calendar = Calendar.getInstance();
 		calendar.setTime(today);
-		calendar.add(Calendar.HOUR_OF_DAY,24);
+		calendar.add(Calendar.HOUR_OF_DAY, 24);
 		Date tomorrow = calendar.getTime(); // 13:00 till 13:00 nästa dag
 
 		int nummer = 0;
@@ -138,7 +136,7 @@ public class Dag1Application implements CommandLineRunner {
 		}
 
 		System.out.println("***********************************************");
-		System.out.printf(" ApprovedTime: %s %n ReferenceTime: %s %n Geometry: %s, %s %n", predictions.getApprovedTime(), predictions.getReferenceTime(),predictions.getGeometry().getType(),predictions.getGeometry().getCoordinates());
+		System.out.printf(" ApprovedTime: %s %n ReferenceTime: %s %n Geometry: %s, %s %n", predictions.getApprovedTime(), predictions.getReferenceTime(), predictions.getGeometry().getType(), predictions.getGeometry().getCoordinates());
 		System.out.println("***********************************************");
 
 		for (TimeSeries timeSeries : predictions.getTimeSeries()) {
@@ -156,12 +154,14 @@ public class Dag1Application implements CommandLineRunner {
 
 				calendar.setTime(validTime);
 
+				Forecast forecast = new Forecast();
+
 				if (validTime.after(today) && validTime.before(tomorrow)) {
 					for (Parameter parameter : timeSeries.getParameters()) {
 						List<Float> values = parameter.getValues();
 
 						for (Float parameterValue : values)
-							if (parameter.getName().equals("t")){
+							if (parameter.getName().equals("t")) {
 								paramName = parameter.getName();
 								paramValue = parameter.getValues();
 								paramLvl = parameter.getLevel();
@@ -180,7 +180,7 @@ public class Dag1Application implements CommandLineRunner {
 								forecast.setPredictionHour(hourOfDay);
 								forecast.setPredictionDatum(validLocalDate);
 								forecast.setPredictionTemperature(parameterValue);
-
+								forecast.setDataSource(DataSource.SMHI);
 
 							} else if (parameter.getName().equals("pcat")) {
 								System.out.println("\t\tNederbörd (precipitation) info:");
@@ -212,23 +212,18 @@ public class Dag1Application implements CommandLineRunner {
 									System.out.println("Rain");
 									forecast.setRainOrSnow(true);
 
-								} else if (parameterValue == null) {
-									System.out.println("pcat value: " + parameterValue);
-									System.out.println("No precipitation");
-									forecast.setRainOrSnow(false);
 								}
-								forecast.setDataSource(DataSource.SMHI);
-								iForecastRepository.save(forecast);
-								System.out.println("\n------------------------------------------------\n");
-							}
+							System.out.println("\n------------------------------------------------\n");
+						}
 					}
+					iForecastRepository.save(forecast);
 				}
 			}
 		}
 	}
 
 	// LIST ALL
-	private void  listPredictions(){
+	private void listPredictions() {
 		int num = 1;
 
 		Collections.sort(forecastService.getForecasts(), new Comparator<Forecast>() {
@@ -238,7 +233,7 @@ public class Dag1Application implements CommandLineRunner {
 			}
 		});
 
-		for(var forecast : forecastService.getForecasts()) {
+		for (var forecast : forecastService.getForecasts()) {
 			System.out.printf("\t%d) %n\tId: %s %n\tDag: %s Tid: %d:00 %n\tTemp: %.1f \t%n It will rain or snow: %b %n %n",
 					num++,
 					forecast.getId(),
@@ -253,28 +248,108 @@ public class Dag1Application implements CommandLineRunner {
 	// LIST Create
 	private void addPredictions() {
 
-		Forecast forecast = new Forecast(UUID.randomUUID());
+		Forecast forecast = new Forecast();
 
-		System.out.println("year");
-		int year = scan.nextInt();
-		System.out.println("mouth");
-		int mouth = scan.nextInt();
-		System.out.println("day");
-		int day = scan.nextInt();;
+		int year = 0;
+		int mouth = 0;
+		int day = 0;
 
+		boolean validUpdateInput = false;
 
-		LocalDate date = LocalDate.of(year,mouth,day);
+		System.out.println("yyyy");
+		while (!validUpdateInput) {
+			if (scan.hasNextInt()) {
+				year = scan.nextInt();
+				validUpdateInput = true;
+			} else {
+				System.out.println("yyyy");
+				scan.nextLine();
+			}
+		}
 
+		validUpdateInput = false;
+
+		System.out.println("MM");
+		while (!validUpdateInput) {
+			if (scan.hasNextInt()) {
+				mouth = scan.nextInt();
+				if ((mouth <= 12 && mouth > 0)){
+					validUpdateInput = true;
+				}
+			} else {
+				System.out.println("MM");
+				scan.nextLine();
+			}
+		}
+
+		validUpdateInput = false;
+
+		System.out.println("dd");
+		while (!validUpdateInput) {
+			if (scan.hasNextInt()) {
+				day = scan.nextInt();
+				if (day <= 31 && day > 0){
+					validUpdateInput = true;
+				}
+			} else {
+				System.out.println("dd");
+				scan.nextLine();
+			}
+		}
+
+		LocalDate date = LocalDate.of(year, mouth, day);
+
+		validUpdateInput = false;
+		int hour = 0;
+
+		System.out.print("Set time of day:");
+		while (!validUpdateInput) {
+			if (scan.hasNextInt()) {
+				hour = scan.nextInt();
+				if (hour <= 23 && hour >= 0){
+					validUpdateInput = true;
+				}
+			} else {
+				System.out.print("Set time of day:");
+				scan.nextLine();
+			}
+		}
+
+		validUpdateInput = false;
+		float temp = 0;
+
+		System.out.print("Set temperature:");
+		while(!validUpdateInput){
+			if (scan.hasNextInt()){
+				temp = scan.nextInt();
+				validUpdateInput = true;
+			}else{
+				System.out.print("Set temperature:");
+				scan.nextLine();
+			}
+		}
+
+		validUpdateInput = false;
+		System.out.print("Set Rain or Snow: 1 = false | 2 = true");
+		while (validUpdateInput == false){
+			switch (scan.next()){
+				case "1" -> {
+					forecast.setRainOrSnow(false);
+					validUpdateInput = true;
+				}
+				case "2" -> {
+					forecast.setRainOrSnow(true);
+					validUpdateInput = true;
+				}
+				default -> System.out.print("Set Rain or Snow: 1 = false | 2 = true");
+			}
+		}
+
+		forecast.setCreated(date);
 		forecast.setPredictionDatum(date);
-
-		System.out.println("---- Set time of day: ----");
-		int hour = scan.nextInt();
 		forecast.setPredictionHour(hour);
-
-		System.out.println("---- Set temperature ----");
-		float temp = scan.nextFloat();
 		forecast.setPredictionTemperature(temp);
-
+		forecast.setDataSource(DataSource.ADMIN);
 		forecast.setId(UUID.randomUUID());
 		forecastService.add(forecast);
 	}
@@ -288,44 +363,116 @@ public class Dag1Application implements CommandLineRunner {
 
 		listPredictions();
 
-		int sel;
-		do {
-			sel = scan.nextInt();
-			if (sel <= 0 || sel > forecastService.getForecasts().size()){
-				System.out.printf("That prediction those not exist! Try a different number.%n");
-				listPredictions();
+		int sel = 0;
+
+		boolean validInput = false;
+
+		while(!validInput){
+			if (scan.hasNextInt()){
+				do {
+					sel = scan.nextInt();
+					if (sel <= 0 || sel > forecastService.getForecasts().size()){
+						System.out.printf("That prediction those not exist! Try a different number.%n");
+						listPredictions();
+					}
+				}while (sel <= 0 || sel > forecastService.getForecasts().size());
+				validInput = true;
+			}else{
+				System.out.println("Not an valid input");
+				scan.nextLine();
 			}
-		}while (sel <= 0 || sel > forecastService.getForecasts().size());
+		}
 
 			var changeForecast = forecastService.getByIndex(sel -1);
 
 		while(runUpdate == true){
 			System.out.printf("What do you want to update?%n 1: Date%n 2: time of day%n 3: Temperature%n 9: Exit and save");
-			switch (scan.nextInt()) {
-				case 1 -> {
+			switch (scan.next()) {
+				case "1" -> {
+
+					int year = 0;
+					int mouth = 0;
+					int day = 0;
+
+					boolean validUpdateInput = false;
 
 					System.out.println("yyyy");
-					int year = scan.nextInt();
+					while(!validUpdateInput){
+						if (scan.hasNextInt()){
+							year = scan.nextInt();
+							validUpdateInput = true;
+						}else{
+							System.out.println("yyyy");
+							scan.nextLine();
+						}
+					}
+
+					validUpdateInput = false;
+
 					System.out.println("MM");
-					int mouth = scan.nextInt();
+					while(!validUpdateInput){
+						if (scan.hasNextInt()){
+							mouth = scan.nextInt();
+							validUpdateInput = true;
+						}else{
+							System.out.println("MM");
+							scan.nextLine();
+						}
+					}
+
+					validUpdateInput = false;
+
 					System.out.println("dd");
-					int day = scan.nextInt();
+					while(!validUpdateInput){
+						if (scan.hasNextInt()){
+							day = scan.nextInt();
+							validUpdateInput = true;
+						}else{
+							System.out.println("dd");
+							scan.nextLine();
+						}
+					}
+
 
 					LocalDate date = LocalDate.of(year,mouth,day);
 					LocalDate data = LocalDate.parse(date.toString());
 
 					changeForecast.setPredictionDatum(data);
 				}
-				case 2 -> {
-					System.out.print("New time of day:");
-					changeForecast.setPredictionHour(scan.nextInt());
-				}
-				case 3 -> {
-					System.out.print("New temperature:");
-					changeForecast.setPredictionTemperature(scan.nextFloat());
+				case "2" -> {
+					boolean validUpdateInput = false;
+					int hour = 0;
 
+					System.out.print("New time of day:");
+					while(!validUpdateInput){
+						if (scan.hasNextInt()){
+							hour = scan.nextInt();
+							validUpdateInput = true;
+						}else{
+							System.out.print("New time of day:");
+							scan.nextLine();
+						}
+					}
+					changeForecast.setPredictionHour(hour);
 				}
-				case 9 -> {
+				case "3" -> {
+					boolean validUpdateInput = false;
+					float temp = 0;
+
+					System.out.print("New temperature:");
+					while(!validUpdateInput){
+						if (scan.hasNextInt()){
+							temp = scan.nextInt();
+							validUpdateInput = true;
+						}else{
+							System.out.print("New temperature:");
+							scan.nextLine();
+						}
+					}
+					changeForecast.setPredictionTemperature(temp);
+				}
+				case "9" -> {
+					forecast.setUpdated(LocalDate.now());
 					forecastService.update(changeForecast);
 					runUpdate = false;
 				}
@@ -339,16 +486,29 @@ public class Dag1Application implements CommandLineRunner {
 
 		listPredictions();
 
-		int sel = scan.nextInt();
+		int sel = 0;
+		boolean validInput = false;
+
+		while(!validInput){
+			if (scan.hasNextInt()){
+				sel = scan.nextInt();
+				validInput = true;
+			}else{
+				System.out.println("Not an valid input");
+				scan.nextLine();
+			}
+		}
+
+
 		var selectedForecast = forecastService.getByIndex(sel -1);
 
 			System.out.printf("Are you Sure you want to delete this forecast?%n 1: Yes%n 2: NO");
-		switch (scan.nextInt()) {
-			case 1 -> {
+		switch (scan.next()) {
+			case "1" -> {
 				System.out.printf("Forecast has been deleted%n");
                 forecastService.deleted(selectedForecast);
 			}
-			case 2 -> {
+			case "2" -> {
 				System.out.printf("Forecast was not deleted%n");
 			}
 			default -> {
