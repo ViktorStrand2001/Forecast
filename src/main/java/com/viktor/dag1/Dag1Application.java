@@ -2,7 +2,6 @@ package com.viktor.dag1;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.viktor.dag1.dto.AverageDTO;
-import com.viktor.dag1.dto.ForecastListDTO;
 import com.viktor.dag1.models.*;
 import com.viktor.dag1.repositories.IForecastRepository;
 import com.viktor.dag1.services.ForecastService;
@@ -10,21 +9,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.*;
-import java.util.stream.Collectors;
-
-/*TODO- G
-*  Matcha datum och tid istället för index i average.
-*  */
 
 @SpringBootApplication
 public class Dag1Application implements CommandLineRunner {
@@ -35,7 +25,7 @@ public class Dag1Application implements CommandLineRunner {
 	private ForecastService forecastService;
 	@Autowired
 	private IForecastRepository iForecastRepository;
-	private Forecast forecast;
+
 
 	public static void main(String[] args) {
 
@@ -52,7 +42,7 @@ public class Dag1Application implements CommandLineRunner {
 
 		boolean runMenu = true;
 
-		while (runMenu == true) {
+		while (runMenu) {
 			System.out.println("1. List all");
 			System.out.println("2. Create");
 			System.out.println("3. Update");
@@ -66,14 +56,38 @@ public class Dag1Application implements CommandLineRunner {
 			String sel = scan.next();
 
 			switch (sel) {
-				case "1" -> listPredictions();
+				case "1" -> {
+					if (forecastService.getForecasts().size() <= 0){
+						System.out.println("Not data in database");
+					}else {
+						listPredictions();
+					}
+				}
 				case "2" -> addPredictions();
-				case "3" -> updatePrediction();
-				case "4" -> deletePrediction();
+				case "3" -> {
+					if (forecastService.getForecasts().size() <= 0){
+						System.out.println("Not data to database");
+					}else {
+						updatePrediction();
+					}
+				}
+				case "4" -> {
+					if (forecastService.getForecasts().size() <= 0){
+						System.out.println("Not data in database");
+					}else {
+						deletePrediction();
+					}
+				}
 				case "5" -> smhi();
 				case "6" -> dummyAdd();
 				case "7" -> deleteAllDummys();
-				case "8" -> calculateAverage();
+				case "8" ->  {
+					if (forecastService.getForecasts().size() <= 0){
+						System.out.println("Not data in database");
+					}else {
+						calculateAverage();
+					}
+				}
 				case "9" -> runMenu = false;
 				default -> System.out.println("Press one of the instructed buttons!");
 			}
@@ -260,10 +274,12 @@ public class Dag1Application implements CommandLineRunner {
 		while (!validUpdateInput) {
 			if (scan.hasNextInt()) {
 				year = scan.nextInt();
-				validUpdateInput = true;
+				if ((year <= 9999 && year > 999)){
+					validUpdateInput = true;
+				}
 			} else {
 				System.out.println("yyyy");
-				scan.nextLine();
+				scan.next();
 			}
 		}
 
@@ -278,7 +294,7 @@ public class Dag1Application implements CommandLineRunner {
 				}
 			} else {
 				System.out.println("MM");
-				scan.nextLine();
+				scan.next();
 			}
 		}
 
@@ -293,7 +309,7 @@ public class Dag1Application implements CommandLineRunner {
 				}
 			} else {
 				System.out.println("dd");
-				scan.nextLine();
+				scan.next();
 			}
 		}
 
@@ -311,7 +327,7 @@ public class Dag1Application implements CommandLineRunner {
 				}
 			} else {
 				System.out.print("Set time of day:");
-				scan.nextLine();
+				scan.next();
 			}
 		}
 
@@ -325,13 +341,13 @@ public class Dag1Application implements CommandLineRunner {
 				validUpdateInput = true;
 			}else{
 				System.out.print("Set temperature:");
-				scan.nextLine();
+				scan.next();
 			}
 		}
 
 		validUpdateInput = false;
 		System.out.print("Set Rain or Snow: 1 = false | 2 = true");
-		while (validUpdateInput == false){
+		while (!validUpdateInput){
 			switch (scan.next()){
 				case "1" -> {
 					forecast.setRainOrSnow(false);
@@ -359,34 +375,35 @@ public class Dag1Application implements CommandLineRunner {
 
 		boolean runUpdate = true;
 
-		System.out.printf("Select a row number to update:%n");
+
 
 		listPredictions();
 
-		int sel = 0;
+		System.out.printf("Select a row number to update:%n");
 
+		int sel = 0;
 		boolean validInput = false;
 
 		while(!validInput){
 			if (scan.hasNextInt()){
-				do {
-					sel = scan.nextInt();
+
+				sel = scan.nextInt();
 					if (sel <= 0 || sel > forecastService.getForecasts().size()){
 						System.out.printf("That prediction those not exist! Try a different number.%n");
 						listPredictions();
+					}else{
+						validInput = true;
 					}
-				}while (sel <= 0 || sel > forecastService.getForecasts().size());
-				validInput = true;
 			}else{
 				System.out.println("Not an valid input");
-				scan.nextLine();
+				scan.next();
 			}
 		}
 
 			var changeForecast = forecastService.getByIndex(sel -1);
 
-		while(runUpdate == true){
-			System.out.printf("What do you want to update?%n 1: Date%n 2: time of day%n 3: Temperature%n 9: Exit and save");
+		while(runUpdate){
+			System.out.printf("What do you want to update?%n 1: Date%n 2: time of day%n 3: Temperature%n 4: save%n 9: Exit");
 			switch (scan.next()) {
 				case "1" -> {
 
@@ -400,39 +417,44 @@ public class Dag1Application implements CommandLineRunner {
 					while(!validUpdateInput){
 						if (scan.hasNextInt()){
 							year = scan.nextInt();
-							validUpdateInput = true;
+							if ((year <= 9999 && year > 999)){
+								validUpdateInput = true;
+							}
 						}else{
 							System.out.println("yyyy");
-							scan.nextLine();
+							scan.next();
 						}
 					}
 
 					validUpdateInput = false;
 
 					System.out.println("MM");
-					while(!validUpdateInput){
-						if (scan.hasNextInt()){
+					while (!validUpdateInput) {
+						if (scan.hasNextInt()) {
 							mouth = scan.nextInt();
-							validUpdateInput = true;
-						}else{
+							if ((mouth <= 12 && mouth > 0)){
+								validUpdateInput = true;
+							}
+						} else {
 							System.out.println("MM");
-							scan.nextLine();
+							scan.next();
 						}
 					}
 
 					validUpdateInput = false;
 
 					System.out.println("dd");
-					while(!validUpdateInput){
-						if (scan.hasNextInt()){
+					while (!validUpdateInput) {
+						if (scan.hasNextInt()) {
 							day = scan.nextInt();
-							validUpdateInput = true;
-						}else{
+							if (day <= 31 && day > 0){
+								validUpdateInput = true;
+							}
+						} else {
 							System.out.println("dd");
-							scan.nextLine();
+							scan.next();
 						}
 					}
-
 
 					LocalDate date = LocalDate.of(year,mouth,day);
 					LocalDate data = LocalDate.parse(date.toString());
@@ -443,14 +465,16 @@ public class Dag1Application implements CommandLineRunner {
 					boolean validUpdateInput = false;
 					int hour = 0;
 
-					System.out.print("New time of day:");
-					while(!validUpdateInput){
-						if (scan.hasNextInt()){
+					System.out.print("Set time of day:");
+					while (!validUpdateInput) {
+						if (scan.hasNextInt()) {
 							hour = scan.nextInt();
-							validUpdateInput = true;
-						}else{
-							System.out.print("New time of day:");
-							scan.nextLine();
+							if (hour <= 23 && hour >= 0){
+								validUpdateInput = true;
+							}
+						} else {
+							System.out.print("Set time of day:");
+							scan.next();
 						}
 					}
 					changeForecast.setPredictionHour(hour);
@@ -466,16 +490,17 @@ public class Dag1Application implements CommandLineRunner {
 							validUpdateInput = true;
 						}else{
 							System.out.print("New temperature:");
-							scan.nextLine();
+							scan.next();
 						}
 					}
 					changeForecast.setPredictionTemperature(temp);
 				}
-				case "9" -> {
-					forecast.setUpdated(LocalDate.now());
+				case "4" -> {
+					changeForecast.setUpdated(LocalDate.now());
 					forecastService.update(changeForecast);
-					runUpdate = false;
 				}
+				case "9" -> runUpdate = false;
+
 				default -> System.out.println(" Select between 1-3 or 9");
 			}
 		}
@@ -486,33 +511,45 @@ public class Dag1Application implements CommandLineRunner {
 
 		listPredictions();
 
-		int sel = 0;
-		boolean validInput = false;
+		System.out.println("Wish one do you want to delete?");
 
+		int sel = 0;
+
+		boolean validInput = false;
 		while(!validInput){
 			if (scan.hasNextInt()){
 				sel = scan.nextInt();
-				validInput = true;
+				if (sel <= 0 || sel > forecastService.getForecasts().size()){
+					System.out.printf("That prediction those not exist! Try a different number.%n");
+					listPredictions();
+				}else{
+					validInput = true;
+				}
 			}else{
 				System.out.println("Not an valid input");
-				scan.nextLine();
+				scan.next();
 			}
 		}
-
 
 		var selectedForecast = forecastService.getByIndex(sel -1);
 
 			System.out.printf("Are you Sure you want to delete this forecast?%n 1: Yes%n 2: NO");
-		switch (scan.next()) {
-			case "1" -> {
-				System.out.printf("Forecast has been deleted%n");
-                forecastService.deleted(selectedForecast);
-			}
-			case "2" -> {
-				System.out.printf("Forecast was not deleted%n");
-			}
-			default -> {
-				System.out.println("Invalid choice. Please press 1 for YES or 2 For NO");
+
+			boolean validDelete = true;
+
+			while (validDelete){
+				switch (scan.next()) {
+					case "1" -> {
+						System.out.printf("Forecast has been deleted%n");
+						forecastService.deleted(selectedForecast);
+						validDelete = false;
+					}
+					case "2" -> {
+						System.out.printf("Forecast was not deleted%n");
+						validDelete = false;
+					}default -> {
+						System.out.println("Invalid choice. Please press 1 for YES or 2 For NO");
+				}
 			}
 		}
 	}
