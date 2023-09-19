@@ -28,7 +28,6 @@ public class Dag1Application implements CommandLineRunner {
 
 
 	public static void main(String[] args) {
-
 		SpringApplication.run(Dag1Application.class, args);
 	}
 
@@ -104,6 +103,7 @@ public class Dag1Application implements CommandLineRunner {
 			LocalDate data = LocalDate.parse(date.toString());
 			forecast1.setPredictionDatum(data);
 			forecast1.setCreated(data);
+			forecast1.setDataSource(DataSource.ADMIN);
 			forecastService.add(forecast1);
 		}
 	}

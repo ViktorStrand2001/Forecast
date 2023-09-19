@@ -11,5 +11,5 @@ public class ForecastListDTO {
     public int predictionHour; //8
     public float predictionTemperature;
     public boolean rainOrSnow;
-    public DataSource DataSource;
+    public DataSource dataSource;
 }

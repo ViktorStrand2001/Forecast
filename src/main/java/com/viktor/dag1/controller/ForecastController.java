@@ -41,6 +41,7 @@ public class ForecastController {
             forecastListDTO.predictionTemperature = forecast.getPredictionTemperature();
             forecastListDTO.predictionHour = forecast.getPredictionHour();
             forecastListDTO.rainOrSnow = forecast.isRainOrSnow();
+            forecastListDTO.dataSource = forecast.getDataSource();
             return forecastListDTO;
         }).collect(Collectors.toList()), HttpStatus.OK);
     }
@@ -81,7 +82,7 @@ public class ForecastController {
         forecast.setPredictionHour(forecastListDTO.predictionHour);
         forecast.setPredictionTemperature(forecastListDTO.predictionTemperature);
         forecast.setRainOrSnow(forecastListDTO.rainOrSnow);
-        forecast.setDataSource(forecastListDTO.DataSource);
+        forecast.setDataSource(forecastListDTO.dataSource);
         forecast.setUpdated(LocalDate.now());
 
         forecastService.update(forecast);
