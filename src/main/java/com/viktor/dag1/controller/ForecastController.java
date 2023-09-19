@@ -91,8 +91,8 @@ public class ForecastController {
 
     @PostMapping("/api/forecasts")
     public ResponseEntity<Forecast> New(@RequestBody Forecast forecast) {
+        forecast.setCreated(LocalDate.now());
     var newCreated = forecastService.add(forecast);
-    newCreated.setCreated(LocalDate.now());
         return ResponseEntity.ok(newCreated); // mer REST ful = created (204) samt url till produkten
     }
 }
